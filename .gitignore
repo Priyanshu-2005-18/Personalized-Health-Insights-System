@@ -53,8 +53,7 @@ Desktop.ini
 
 # Large datasets & temp files
 dataset/
-files/
-files (1)/
 venv/
 .venv/
+
 

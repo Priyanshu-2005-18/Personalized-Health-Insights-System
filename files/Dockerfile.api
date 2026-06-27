@@ -1,0 +1,99 @@
+# =============================================================================
+#  Health Insights API — Production Dockerfile
+#  Multi-stage build: deps → builder (train model) → runtime
+#
+#  Stages
+#  ------
+#  deps      : Install Python packages into an isolated layer
+#  builder   : Copy source + train model artifact
+#  runtime   : Lean final image, non-root user, no dev tools
+# =============================================================================
+
+# ── Stage 1: dependency installer ─────────────────────────────────────────────
+FROM python:3.12-slim AS deps
+
+# Keeps Python from generating .pyc files and buffering stdout/stderr
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1
+
+WORKDIR /install
+
+COPY requirements.txt .
+
+# Separate prod deps from test deps so the runtime image stays lean
+RUN pip install --upgrade pip \
+ && grep -v -E "^(pytest|httpx|ruff)" requirements.txt > requirements.prod.txt \
+ && pip install --prefix=/install/pkgs -r requirements.prod.txt
+
+
+# ── Stage 2: model trainer ─────────────────────────────────────────────────────
+FROM deps AS builder
+
+WORKDIR /build
+
+# Copy installed packages from deps stage
+COPY --from=deps /install/pkgs /usr/local
+
+# Copy source code
+COPY app/    app/
+COPY ml/     ml/
+
+# Train model and generate artifact — baked into the image at build time.
+# Override with a volume mount in production to use a pre-trained artifact.
+RUN python ml/training/train_model.py
+
+
+# ── Stage 3: lean production runtime ──────────────────────────────────────────
+FROM python:3.12-slim AS runtime
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    APP_HOME=/app \
+    # FastAPI / Uvicorn tunables (overridden via environment / compose)
+    API_HOST=0.0.0.0 \
+    API_PORT=8000 \
+    API_WORKERS=2 \
+    LOG_LEVEL=info
+
+# Create non-root system user and group
+RUN addgroup --system --gid 1001 appgroup \
+ && adduser  --system --uid 1001 --ingroup appgroup --no-create-home appuser
+
+WORKDIR $APP_HOME
+
+# Pull only the installed packages from deps stage
+COPY --from=deps    /install/pkgs          /usr/local
+# Pull app code and trained model from builder stage
+COPY --from=builder /build/app             $APP_HOME/app
+COPY --from=builder /build/ml              $APP_HOME/ml
+
+# Ensure artifact directory is writable by appuser (needed if hot-swapping model)
+RUN chown -R appuser:appgroup $APP_HOME/ml/artifacts
+
+USER appuser
+
+# Expose the Uvicorn port
+EXPOSE 8000
+
+# Docker HEALTHCHECK — uses the liveness endpoint we already built
+HEALTHCHECK \
+  --interval=30s \
+  --timeout=5s \
+  --start-period=20s \
+  --retries=3 \
+  CMD python -c \
+    "import urllib.request, sys; \
+     r = urllib.request.urlopen('http://localhost:8000/api/v1/health', timeout=4); \
+     sys.exit(0 if r.status == 200 else 1)"
+
+# Use exec form so PID 1 receives SIGTERM correctly (graceful shutdown)
+CMD ["sh", "-c", \
+     "uvicorn app.main:app \
+       --host $API_HOST \
+       --port $API_PORT \
+       --workers $API_WORKERS \
+       --log-level $LOG_LEVEL \
+       --proxy-headers \
+       --forwarded-allow-ips='*'"]

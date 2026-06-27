@@ -1,0 +1,61 @@
+version: "3.9"
+
+services:
+
+  # ── Health Insights API ──────────────────────────────────────────────────────
+  api:
+    build:
+      context: .
+      target: runtime
+    image: health-insights-api:latest
+    container_name: health_api
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env.example
+    environment:
+      LOG_LEVEL: INFO
+      DEBUG: "false"
+    volumes:
+      # Mount artifact dir so you can hot-swap the model without rebuilding
+      - ./ml/artifacts:/app/ml/artifacts:ro
+    healthcheck:
+      test: ["CMD", "python", "-c",
+             "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/v1/health')"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+    restart: unless-stopped
+    networks:
+      - health_net
+
+  # ── Prometheus (optional — comment out if not needed) ────────────────────────
+  prometheus:
+    image: prom/prometheus:v2.54.1
+    container_name: health_prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./deploy/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    networks:
+      - health_net
+    profiles:
+      - monitoring
+
+  # ── Grafana (optional) ───────────────────────────────────────────────────────
+  grafana:
+    image: grafana/grafana:11.2.0
+    container_name: health_grafana
+    ports:
+      - "3000:3000"
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: admin
+    networks:
+      - health_net
+    profiles:
+      - monitoring
+
+networks:
+  health_net:
+    driver: bridge
