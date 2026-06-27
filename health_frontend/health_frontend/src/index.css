@@ -1,0 +1,134 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * {
+    box-sizing: border-box;
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    @apply bg-health-surface text-health-slate font-sans;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  :focus-visible {
+    @apply outline-none ring-2 ring-teal-500 ring-offset-2;
+  }
+}
+
+@layer components {
+  /* ── Input base ─────────────────────────────────────── */
+  .input-base {
+    @apply w-full px-3.5 py-2.5 text-sm text-health-slate
+           bg-white border border-health-border rounded-xl
+           placeholder:text-health-muted/60
+           focus:outline-none focus:ring-2 focus:ring-teal-500/20
+           focus:border-teal-500
+           transition-all duration-150;
+  }
+
+  /* ── Button variants ────────────────────────────────── */
+  .btn-primary {
+    @apply inline-flex items-center justify-center gap-2
+           px-5 py-2.5 text-sm font-medium text-white
+           bg-health-green hover:bg-teal-700
+           rounded-xl shadow-sm
+           focus:outline-none focus:ring-2 focus:ring-teal-500/30
+           disabled:opacity-50 disabled:cursor-not-allowed
+           transition-all duration-150 active:scale-[0.98];
+  }
+
+  .btn-secondary {
+    @apply inline-flex items-center justify-center gap-2
+           px-5 py-2.5 text-sm font-medium text-health-slate
+           bg-white border border-health-border
+           hover:bg-health-surface
+           rounded-xl shadow-sm
+           focus:outline-none focus:ring-2 focus:ring-teal-500/20
+           disabled:opacity-50 disabled:cursor-not-allowed
+           transition-all duration-150 active:scale-[0.98];
+  }
+
+  .btn-ghost {
+    @apply inline-flex items-center justify-center gap-2
+           px-4 py-2 text-sm font-medium text-health-muted
+           hover:text-health-slate hover:bg-health-surface
+           rounded-xl
+           transition-all duration-150;
+  }
+
+  /* ── Card ───────────────────────────────────────────── */
+  .card {
+    @apply bg-white border border-health-border rounded-2xl shadow-card;
+  }
+
+  .card-p {
+    @apply card p-6;
+  }
+
+  /* ── Section label ──────────────────────────────────── */
+  .section-label {
+    @apply text-xs font-semibold tracking-widest uppercase text-health-muted;
+  }
+
+  /* ── Score ring ─────────────────────────────────────── */
+  .score-ring {
+    @apply relative flex items-center justify-center
+           w-32 h-32 rounded-full;
+  }
+
+  /* ── Metric pill ────────────────────────────────────── */
+  .metric-pill {
+    @apply inline-flex items-center gap-1.5
+           px-2.5 py-1 text-xs font-medium rounded-full;
+  }
+
+  /* ── Priority badge ─────────────────────────────────── */
+  .priority-critical {
+    @apply bg-red-50 text-red-700 border border-red-200;
+  }
+  .priority-high {
+    @apply bg-orange-50 text-orange-700 border border-orange-200;
+  }
+  .priority-medium {
+    @apply bg-yellow-50 text-yellow-700 border border-yellow-200;
+  }
+  .priority-low {
+    @apply bg-teal-50 text-teal-700 border border-teal-200;
+  }
+}
+
+/* ── Scrollbar ───────────────────────────────────────── */
+::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  @apply bg-health-border rounded-full;
+}
+
+/* ── Animations ─────────────────────────────────────── */
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.animate-fade-up {
+  animation: fadeUp 0.3s ease-out both;
+}
+
+@keyframes pulse-ring {
+  0%, 100% { box-shadow: 0 0 0 0 rgb(20 184 166 / 0.3); }
+  50%       { box-shadow: 0 0 0 8px rgb(20 184 166 / 0); }
+}
+.animate-pulse-ring {
+  animation: pulse-ring 2s ease-in-out infinite;
+}

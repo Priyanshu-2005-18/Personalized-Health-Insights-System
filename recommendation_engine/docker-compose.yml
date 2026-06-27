@@ -1,0 +1,45 @@
+version: "3.9"
+
+services:
+
+  # ── Recommendation Engine API ─────────────────────────────────
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: production
+    container_name: health_recommendation_api
+    restart: unless-stopped
+    env_file:
+      - .env
+    ports:
+      - "8000:8000"
+    volumes:
+      # Hot-reload in development — remove in prod
+      - ./app:/app/app
+    command: >
+      uvicorn app.main:app
+      --host 0.0.0.0
+      --port 8000
+      --reload
+    healthcheck:
+      test: ["CMD", "python", "-c",
+             "import urllib.request; urllib.request.urlopen('http://localhost:8000/health-check')"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+  # ── Optional: run tests inside container ─────────────────────
+  tests:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: builder
+    container_name: health_recommendation_tests
+    volumes:
+      - .:/app
+    working_dir: /app
+    command: python -m pytest tests/ -v --tb=short
+    profiles:
+      - test   # Only runs with: docker compose --profile test up tests

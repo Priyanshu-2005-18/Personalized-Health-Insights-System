@@ -1,0 +1,63 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+eggs/
+parts/
+var/
+sdist/
+develop-eggs/
+.installed.cfg
+lib/
+lib64/
+wheels/
+
+# Virtual environments
+.env
+.venv
+env/
+venv/
+ENV/
+
+# Keep example env
+!.env.example
+
+# Pytest / coverage
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+nosetests.xml
+coverage.xml
+*.cover
+
+# MyPy
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# IDEs
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+
+# Alembic auto-generated (keep versions dir but ignore compiled)
+alembic/versions/__pycache__/
+
+# ML model artifacts (large binary files)
+app/ml/models/*.pkl
+app/ml/models/*.joblib
+
+# Logs
+*.log
+logs/
+
+# Docker
+.dockerignore

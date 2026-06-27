@@ -1,0 +1,51 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+
+# Environment files
+.env
+!.env.example
+
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+health_tracker.db
+
+# Testing & coverage
+.pytest_cache/
+.coverage
+htmlcov/
+coverage.xml
+.tox/
+
+# Type checking
+.mypy_cache/
+.dmypy.json
+
+# IDEs
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# Alembic
+alembic/versions/__pycache__/
+
+# Logs
+*.log
+logs/

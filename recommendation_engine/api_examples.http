@@ -1,0 +1,412 @@
+### =============================================================
+###  Health Recommendation Engine — API Examples
+###  Compatible with VS Code REST Client & JetBrains HTTP Client
+###
+###  Start server: uvicorn app.main:app --reload
+###  Docs:         http://localhost:8000/docs
+### =============================================================
+
+@base = http://localhost:8000/api/v1
+
+
+# ──────────────────────────────────────────────────────────────
+#  SYSTEM
+# ──────────────────────────────────────────────────────────────
+
+### Root
+GET http://localhost:8000/
+
+### Health check
+GET http://localhost:8000/health-check
+
+### Engine health — shows rule counts
+GET {{base}}/recommendations/health
+
+### List all supported categories
+GET {{base}}/recommendations/categories
+
+
+# ──────────────────────────────────────────────────────────────
+#  SCENARIO 1: Critical user — all metrics in danger zone
+#  Expected: score ~10-15/100, 5-6 CRITICAL recs
+# ──────────────────────────────────────────────────────────────
+
+### CRITICAL user
+POST {{base}}/recommendations
+Content-Type: application/json
+
+{
+  "sleep_hours": 4.0,
+  "steps": 800,
+  "calories": 900,
+  "water_intake_ml": 400,
+  "stress_level": 10,
+  "heart_rate_bpm": 112
+}
+
+###
+# Expected response highlights:
+# {
+#   "health_score": 12.07,
+#   "health_score_label": "Critical",
+#   "critical_count": 5,
+#   "score_improvement_potential": 87.9,
+#   "recommendations": [
+#     { "priority": "critical", "icon": "🚨", "title": "Sedentary Alert..." },
+#     { "priority": "critical", "icon": "🚨", "title": "Critical Sleep Deprivation..." },
+#     { "priority": "critical", "icon": "🆘", "title": "Extreme Stress Level..." },
+#     { "priority": "critical", "icon": "⚠️", "title": "Dangerously Low Calorie Intake" },
+#     { "priority": "critical", "icon": "🚨", "title": "Severe Dehydration Risk..." },
+#     { "priority": "high",     "icon": "❤️", "title": "Elevated Resting Heart Rate..." }
+#   ]
+# }
+
+
+# ──────────────────────────────────────────────────────────────
+#  SCENARIO 2: Poor user — most metrics below healthy range
+#  Expected: score ~35-45/100, mix of HIGH and MEDIUM recs
+# ──────────────────────────────────────────────────────────────
+
+### POOR health user
+POST {{base}}/recommendations
+Content-Type: application/json
+
+{
+  "sleep_hours": 5.5,
+  "steps": 3200,
+  "calories": 2800,
+  "water_intake_ml": 1200,
+  "stress_level": 8,
+  "heart_rate_bpm": 92
+}
+
+
+# ──────────────────────────────────────────────────────────────
+#  SCENARIO 3: Fair user — some metrics ok, some need work
+#  Expected: score ~55-65/100, MEDIUM recs
+# ──────────────────────────────────────────────────────────────
+
+### FAIR health user
+POST {{base}}/recommendations
+Content-Type: application/json
+
+{
+  "sleep_hours": 6.5,
+  "steps": 6000,
+  "calories": 2200,
+  "water_intake_ml": 1800,
+  "stress_level": 6,
+  "heart_rate_bpm": 80
+}
+
+
+# ──────────────────────────────────────────────────────────────
+#  SCENARIO 4: Good user — most metrics in healthy range
+#  Expected: score ~75-85/100, LOW priority maintenance recs
+# ──────────────────────────────────────────────────────────────
+
+### GOOD health user
+POST {{base}}/recommendations
+Content-Type: application/json
+
+{
+  "sleep_hours": 7.5,
+  "steps": 9000,
+  "calories": 2100,
+  "water_intake_ml": 2400,
+  "stress_level": 3,
+  "heart_rate_bpm": 68
+}
+
+
+# ──────────────────────────────────────────────────────────────
+#  SCENARIO 5: Excellent user — all metrics optimal
+#  Expected: score ~95-100/100, all POSITIVE / LOW recs
+# ──────────────────────────────────────────────────────────────
+
+### EXCELLENT health user
+POST {{base}}/recommendations
+Content-Type: application/json
+
+{
+  "sleep_hours": 8.0,
+  "steps": 11000,
+  "calories": 2000,
+  "water_intake_ml": 2800,
+  "stress_level": 2,
+  "heart_rate_bpm": 62
+}
+
+###
+# Expected response:
+# {
+#   "health_score": 97.04,
+#   "health_score_label": "Excellent",
+#   "critical_count": 0,
+#   "high_count": 0,
+#   "recommendations": [/* LOW priority positive-reinforcement only */]
+# }
+
+
+# ──────────────────────────────────────────────────────────────
+#  SCENARIO 6: ML-predicted score integration
+#  Pass health_score from your ML model + raw metrics
+# ──────────────────────────────────────────────────────────────
+
+### With ML-predicted score
+POST {{base}}/recommendations
+Content-Type: application/json
+
+{
+  "sleep_hours": 5.5,
+  "steps": 3200,
+  "calories": 2800,
+  "water_intake_ml": 1200,
+  "stress_level": 8,
+  "heart_rate_bpm": 92,
+  "health_score": 42.0
+}
+
+###
+# When health_score is supplied, the engine uses it directly.
+# The score_label will reflect 42.0 → "Poor"
+# Rules still fire based on individual metric values.
+
+
+# ──────────────────────────────────────────────────────────────
+#  SCENARIO 7: Partial input — only some metrics available
+#  Rules only fire for metrics that are present.
+# ──────────────────────────────────────────────────────────────
+
+### Sleep only
+POST {{base}}/recommendations
+Content-Type: application/json
+
+{
+  "sleep_hours": 4.5
+}
+
+### Steps and stress only
+POST {{base}}/recommendations
+Content-Type: application/json
+
+{
+  "steps": 1200,
+  "stress_level": 9
+}
+
+### Water and heart rate only
+POST {{base}}/recommendations
+Content-Type: application/json
+
+{
+  "water_intake_ml": 600,
+  "heart_rate_bpm": 108
+}
+
+
+# ──────────────────────────────────────────────────────────────
+#  SCENARIO 8: Compound rules
+#  Certain metric combinations trigger enhanced recommendations
+# ──────────────────────────────────────────────────────────────
+
+### High stress + poor sleep → compound warning in stress rec
+POST {{base}}/recommendations
+Content-Type: application/json
+
+{
+  "stress_level": 8,
+  "sleep_hours": 5.0
+}
+
+### Active user + high calories → athlete-adjusted nutrition advice
+POST {{base}}/recommendations
+Content-Type: application/json
+
+{
+  "steps": 13000,
+  "calories": 3000
+}
+
+### Active user + low water → activity-adjusted hydration advice
+POST {{base}}/recommendations
+Content-Type: application/json
+
+{
+  "steps": 12000,
+  "water_intake_ml": 1800
+}
+
+### Elevated HR + high stress → stress note in HR recommendation
+POST {{base}}/recommendations
+Content-Type: application/json
+
+{
+  "heart_rate_bpm": 110,
+  "stress_level": 9
+}
+
+
+# ──────────────────────────────────────────────────────────────
+#  SCENARIO 9: Quick recommendations (top 3 only)
+#  Useful for mobile push notifications or dashboard widgets
+# ──────────────────────────────────────────────────────────────
+
+### Quick recs — critical user, top 3 only
+POST {{base}}/recommendations/quick
+Content-Type: application/json
+
+{
+  "sleep_hours": 4.0,
+  "steps": 800,
+  "calories": 900,
+  "water_intake_ml": 400,
+  "stress_level": 10,
+  "heart_rate_bpm": 112
+}
+
+### Quick recs — good user
+POST {{base}}/recommendations/quick
+Content-Type: application/json
+
+{
+  "sleep_hours": 7.5,
+  "steps": 8500,
+  "stress_level": 3
+}
+
+
+# ──────────────────────────────────────────────────────────────
+#  SCENARIO 10: Edge cases and boundary values
+# ──────────────────────────────────────────────────────────────
+
+### Exact boundary — sleep at optimal minimum (7.0h)
+POST {{base}}/recommendations
+Content-Type: application/json
+
+{
+  "sleep_hours": 7.0,
+  "stress_level": 5
+}
+
+### Oversleeper — sleep > 9 hours
+POST {{base}}/recommendations
+Content-Type: application/json
+
+{
+  "sleep_hours": 11.0
+}
+
+### Athlete heart rate (< 55 bpm)
+POST {{base}}/recommendations
+Content-Type: application/json
+
+{
+  "heart_rate_bpm": 48,
+  "steps": 12000
+}
+
+### Maximum steps — highly active
+POST {{base}}/recommendations
+Content-Type: application/json
+
+{
+  "steps": 18000,
+  "sleep_hours": 7.0
+}
+
+### Health score only (no individual metrics)
+POST {{base}}/recommendations
+Content-Type: application/json
+
+{
+  "health_score": 30.0
+}
+
+
+# ──────────────────────────────────────────────────────────────
+#  SCENARIO 11: Validation errors (should return 422)
+# ──────────────────────────────────────────────────────────────
+
+### ERROR — sleep_hours out of range (> 24)
+POST {{base}}/recommendations
+Content-Type: application/json
+
+{
+  "sleep_hours": 30.0
+}
+
+### ERROR — stress_level out of range (> 10)
+POST {{base}}/recommendations
+Content-Type: application/json
+
+{
+  "stress_level": 15
+}
+
+### ERROR — heart_rate_bpm below minimum (< 30)
+POST {{base}}/recommendations
+Content-Type: application/json
+
+{
+  "heart_rate_bpm": 20
+}
+
+### ERROR — no metrics at all (returns 422)
+POST {{base}}/recommendations
+Content-Type: application/json
+
+{}
+
+###
+# Expected for all above:
+# HTTP 422 Unprocessable Entity
+# {
+#   "detail": "Validation failed",
+#   "errors": [{ "field": "...", "message": "...", "type": "..." }]
+# }
+
+
+# ──────────────────────────────────────────────────────────────
+#  RESPONSE STRUCTURE REFERENCE
+# ──────────────────────────────────────────────────────────────
+#
+#  {
+#    "health_score": 42.5,
+#    "health_score_label": "Poor",            // Excellent/Good/Fair/Poor/Critical
+#    "overall_summary": "Your score is...",
+#    "metric_statuses": [                     // 6 cards, one per metric
+#      {
+#        "name": "Sleep",
+#        "value": 5.5,
+#        "unit": "hours",
+#        "status": "poor",                    // optimal/good/fair/poor/critical
+#        "status_label": "Poor 🔴",
+#        "target": "7–9 hours",
+#        "score": 31.25
+#      }, ...
+#    ],
+#    "recommendations": [
+#      {
+#        "id": "sleep_poor",
+#        "category": "sleep",
+#        "priority": "high",                  // critical/high/medium/low
+#        "title": "Insufficient Sleep...",
+#        "summary": "You slept 5.5 hours...",
+#        "detail": "Adults sleeping 6 hours...",
+#        "actions": [
+#          { "order": 1, "description": "...", "duration": "...", "frequency": "..." }
+#        ],
+#        "metric_value": 5.5,
+#        "target_value": "7–9 hours",
+#        "icon": "😴",
+#        "score_impact": 12.0,
+#        "tags": ["sleep", "routine", "immune", "stress"]
+#      }, ...
+#    ],
+#    "total_count": 6,
+#    "critical_count": 2,
+#    "high_count": 3,
+#    "score_improvement_potential": 45.2,
+#    "generated_at": "2024-06-15T10:30:00+00:00"
+#  }

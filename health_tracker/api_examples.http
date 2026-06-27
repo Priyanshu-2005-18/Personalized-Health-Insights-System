@@ -1,0 +1,499 @@
+### ============================================================
+###  Health Tracking API — Example Requests
+###  Compatible with VS Code REST Client extension
+###  and JetBrains HTTP Client
+###
+###  Usage:
+###    1. Start server: uvicorn app.main:app --reload
+###    2. Run "Signup" and "Login" first
+###    3. Copy the access_token into @token below
+###    4. Run any other request
+### ============================================================
+
+@base_url = http://localhost:8000/api/v1
+@token = PASTE_YOUR_ACCESS_TOKEN_HERE
+
+
+### ─────────────────────────────────────────────────────────────
+###  SYSTEM
+### ─────────────────────────────────────────────────────────────
+
+### Health check
+GET http://localhost:8000/health-check
+
+### API root
+GET http://localhost:8000/
+
+
+### ─────────────────────────────────────────────────────────────
+###  AUTH — Signup
+### ─────────────────────────────────────────────────────────────
+
+### 1. Create a new account
+POST {{base_url}}/auth/signup
+Content-Type: application/json
+
+{
+  "email": "alice@example.com",
+  "username": "alice",
+  "password": "Alice@1234",
+  "full_name": "Alice Smith"
+}
+
+###
+# Expected response (201 Created):
+# {
+#   "message": "Account created for alice@example.com"
+# }
+
+
+### ─────────────────────────────────────────────────────────────
+###  AUTH — Login
+### ─────────────────────────────────────────────────────────────
+
+### 2. Login and receive access token
+POST {{base_url}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "alice@example.com",
+  "password": "Alice@1234"
+}
+
+###
+# Expected response (200 OK):
+# {
+#   "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+#   "token_type": "bearer"
+# }
+#
+# → Copy the access_token value into @token at the top of this file
+
+
+### ─────────────────────────────────────────────────────────────
+###  HEALTH ENTRIES — Create
+### ─────────────────────────────────────────────────────────────
+
+### 3. Log a full daily health entry (all 6 metrics)
+POST {{base_url}}/health
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "entry_date": "2024-06-15",
+  "sleep_hours": 7.5,
+  "steps": 9200,
+  "calories_consumed": 2100,
+  "water_intake_ml": 2500,
+  "stress_level": 4,
+  "heart_rate_bpm": 68,
+  "notes": "Felt rested. Gym session in the morning.",
+  "source": "manual"
+}
+
+###
+# Expected response (201 Created):
+# {
+#   "id": "uuid...",
+#   "user_id": "uuid...",
+#   "entry_date": "2024-06-15",
+#   "sleep_hours": 7.5,
+#   "steps": 9200,
+#   "calories_consumed": 2100,
+#   "water_intake_ml": 2500,
+#   "stress_level": 4,
+#   "heart_rate_bpm": 68,
+#   "sleep_minutes": 450,
+#   "water_intake_glasses": 10.0,
+#   "stress_label": "Mild",
+#   "heart_rate_zone": "Excellent (60–70 bpm)",
+#   "notes": "Felt rested. Gym session in the morning.",
+#   "source": "manual",
+#   "created_at": "...",
+#   "updated_at": "..."
+# }
+
+
+### 4. Log a PARTIAL entry — sleep only (all other metrics optional)
+POST {{base_url}}/health
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "entry_date": "2024-06-16",
+  "sleep_hours": 6.0
+}
+
+###
+# Expected response (201 Created) — untracked metrics return null:
+# {
+#   "sleep_hours": 6.0,
+#   "steps": null,
+#   "calories_consumed": null,
+#   "water_intake_ml": null,
+#   "stress_level": null,
+#   "heart_rate_bpm": null,
+#   "sleep_minutes": 360,
+#   ...
+# }
+
+
+### 5. Log from a wearable device (source = fitbit)
+POST {{base_url}}/health
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "entry_date": "2024-06-17",
+  "sleep_hours": 8.2,
+  "steps": 11450,
+  "heart_rate_bpm": 61,
+  "water_intake_ml": 1800,
+  "source": "fitbit"
+}
+
+
+### 6. HIGH stress day example
+POST {{base_url}}/health
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "entry_date": "2024-06-18",
+  "sleep_hours": 5.0,
+  "steps": 2100,
+  "calories_consumed": 2800,
+  "water_intake_ml": 900,
+  "stress_level": 9,
+  "heart_rate_bpm": 92,
+  "notes": "Deadline day. Very little sleep. Stressed."
+}
+
+###
+# Expected stress_label: "Extreme"
+# Expected heart_rate_zone: "Above average (81–90 bpm)"
+
+
+### 7. ERROR — Missing all metrics (returns 422)
+POST {{base_url}}/health
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "entry_date": "2024-06-19",
+  "notes": "Just a note but no metric data"
+}
+
+###
+# Expected response (422 Unprocessable Entity):
+# {
+#   "detail": "Validation failed",
+#   "errors": [
+#     {
+#       "field": "body",
+#       "message": "At least one metric ... must be provided",
+#       "type": "value_error"
+#     }
+#   ]
+# }
+
+
+### 8. ERROR — Out-of-range value (stress_level > 10)
+POST {{base_url}}/health
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "entry_date": "2024-06-20",
+  "stress_level": 15
+}
+
+###
+# Expected response (422 Unprocessable Entity)
+
+
+### 9. ERROR — Duplicate date (returns 409)
+POST {{base_url}}/health
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "entry_date": "2024-06-15",
+  "steps": 500
+}
+
+###
+# Expected response (409 Conflict):
+# {
+#   "detail": "A health entry for 2024-06-15 already exists. Use PATCH to update it."
+# }
+
+
+### ─────────────────────────────────────────────────────────────
+###  HEALTH ENTRIES — Read
+### ─────────────────────────────────────────────────────────────
+
+### 10. List all entries (paginated, newest first)
+GET {{base_url}}/health
+Authorization: Bearer {{token}}
+
+
+### 11. List with pagination (page 2, 5 items per page)
+GET {{base_url}}/health?page=2&size=5
+Authorization: Bearer {{token}}
+
+
+### 12. Filter by date range
+GET {{base_url}}/health?start_date=2024-06-01&end_date=2024-06-30
+Authorization: Bearer {{token}}
+
+
+### 13. Filter — low stress days only (stress ≤ 3)
+GET {{base_url}}/health?max_stress_level=3
+Authorization: Bearer {{token}}
+
+
+### 14. Filter — active days (steps ≥ 8000)
+GET {{base_url}}/health?min_steps=8000
+Authorization: Bearer {{token}}
+
+
+### 15. Filter — entries from Fitbit only
+GET {{base_url}}/health?source=fitbit
+Authorization: Bearer {{token}}
+
+
+### 16. Combined filters — June 2024, good sleep (≥ 7h), low stress (≤ 4)
+GET {{base_url}}/health?start_date=2024-06-01&end_date=2024-06-30&min_sleep_hours=7&max_stress_level=4
+Authorization: Bearer {{token}}
+
+
+### 17. Get today's entry (shortcut)
+GET {{base_url}}/health/today
+Authorization: Bearer {{token}}
+
+###
+# Returns 404 if today hasn't been logged yet
+
+
+### 18. Get entry by specific date
+GET {{base_url}}/health/date/2024-06-15
+Authorization: Bearer {{token}}
+
+
+### 19. Get entry by UUID
+# Replace {entry_id} with an actual UUID from a previous response
+GET {{base_url}}/health/YOUR_ENTRY_UUID_HERE
+Authorization: Bearer {{token}}
+
+
+### ─────────────────────────────────────────────────────────────
+###  HEALTH ENTRIES — Update (PATCH)
+### ─────────────────────────────────────────────────────────────
+
+### 20. Update steps only (partial update — other fields untouched)
+PATCH {{base_url}}/health/YOUR_ENTRY_UUID_HERE
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "steps": 12000
+}
+
+
+### 21. Update multiple metrics at once
+PATCH {{base_url}}/health/YOUR_ENTRY_UUID_HERE
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "water_intake_ml": 3500,
+  "stress_level": 2,
+  "heart_rate_bpm": 60,
+  "notes": "Went for a long walk. Felt much better."
+}
+
+
+### 22. Update notes only
+PATCH {{base_url}}/health/YOUR_ENTRY_UUID_HERE
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "notes": "Updated journal: meditation helped with stress."
+}
+
+
+### 23. ERROR — Empty PATCH body (returns 422)
+PATCH {{base_url}}/health/YOUR_ENTRY_UUID_HERE
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{}
+
+###
+# Expected response (422 Unprocessable Entity):
+# "At least one field must be provided for update"
+
+
+### ─────────────────────────────────────────────────────────────
+###  HEALTH ENTRIES — Delete
+### ─────────────────────────────────────────────────────────────
+
+### 24. Delete an entry by UUID
+DELETE {{base_url}}/health/YOUR_ENTRY_UUID_HERE
+Authorization: Bearer {{token}}
+
+###
+# Expected response (200 OK):
+# {
+#   "message": "Health entry deleted successfully"
+# }
+
+
+### ─────────────────────────────────────────────────────────────
+###  ANALYTICS — Summary
+### ─────────────────────────────────────────────────────────────
+
+### 25. Weekly summary (last 7 days)
+GET {{base_url}}/health/summary?start_date=2024-06-10&end_date=2024-06-16
+Authorization: Bearer {{token}}
+
+###
+# Expected response:
+# {
+#   "period_start": "2024-06-10",
+#   "period_end": "2024-06-16",
+#   "total_entries": 4,
+#   "avg_sleep_hours": 7.18,
+#   "min_sleep_hours": 5.0,
+#   "max_sleep_hours": 8.2,
+#   "avg_steps": 7560.0,
+#   "total_steps": 30240,
+#   "max_steps": 11450,
+#   "avg_calories_consumed": 2450.0,
+#   "total_calories_consumed": 9800,
+#   "avg_water_intake_ml": 1800.0,
+#   "total_water_intake_ml": 7200,
+#   "avg_stress_level": 5.5,
+#   "min_stress_level": 4,
+#   "max_stress_level": 9,
+#   "avg_heart_rate_bpm": 72.75,
+#   "min_heart_rate_bpm": 61,
+#   "max_heart_rate_bpm": 92
+# }
+
+
+### 26. Monthly summary — June 2024
+GET {{base_url}}/health/summary?start_date=2024-06-01&end_date=2024-06-30
+Authorization: Bearer {{token}}
+
+
+### 27. ERROR — start_date after end_date (returns 400)
+GET {{base_url}}/health/summary?start_date=2024-12-31&end_date=2024-01-01
+Authorization: Bearer {{token}}
+
+###
+# Expected response (400 Bad Request):
+# {
+#   "detail": "start_date must not be after end_date"
+# }
+
+
+### ─────────────────────────────────────────────────────────────
+###  ANALYTICS — Streak
+### ─────────────────────────────────────────────────────────────
+
+### 28. Get logging streak
+GET {{base_url}}/health/streak
+Authorization: Bearer {{token}}
+
+###
+# Expected response:
+# {
+#   "current_streak": 4,
+#   "longest_streak": 12,
+#   "last_entry_date": "2024-06-18"
+# }
+
+
+### ─────────────────────────────────────────────────────────────
+###  ERROR EXAMPLES — Validation failures
+### ─────────────────────────────────────────────────────────────
+
+### 29. sleep_hours out of range (> 24)
+POST {{base_url}}/health
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "entry_date": "2024-07-01",
+  "sleep_hours": 25.0
+}
+
+
+### 30. heart_rate_bpm out of range (< 30)
+POST {{base_url}}/health
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "entry_date": "2024-07-02",
+  "heart_rate_bpm": 15
+}
+
+
+### 31. steps negative
+POST {{base_url}}/health
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "entry_date": "2024-07-03",
+  "steps": -100
+}
+
+
+### 32. Unauthenticated request (returns 401)
+GET {{base_url}}/health
+
+
+### 33. Wrong owner — trying to access another user's entry (returns 403)
+# Log in as a different user first, then try to access Alice's entry UUID
+GET {{base_url}}/health/ALICES_ENTRY_UUID_HERE
+Authorization: Bearer OTHER_USERS_TOKEN
+
+
+### ─────────────────────────────────────────────────────────────
+###  METRIC REFERENCE CARD
+### ─────────────────────────────────────────────────────────────
+#
+#  Metric              | Min    | Max     | Unit          | Notes
+#  ─────────────────────────────────────────────────────────────────────
+#  sleep_hours         | 0.0    | 24.0    | hours         | Supports decimals (7.5 = 7h 30m)
+#  steps               | 0      | 100 000 | steps/day     |
+#  calories_consumed   | 0      | 10 000  | kcal          |
+#  water_intake_ml     | 0      | 10 000  | ml            | 250 ml = 1 glass
+#  stress_level        | 1      | 10      | scale         | 1=none, 10=extreme
+#  heart_rate_bpm      | 30     | 250     | bpm           | Resting heart rate
+#
+#  Computed fields (auto-calculated, never submitted):
+#  sleep_minutes        = sleep_hours × 60
+#  water_intake_glasses = water_intake_ml / 250
+#  stress_label         = Low|Mild|Moderate|High|Extreme
+#  heart_rate_zone      = Athlete|Excellent|Good|Above average|High normal|Elevated
+#
+#  Stress label mapping:
+#    1–2  → Low
+#    3–4  → Mild
+#    5–6  → Moderate
+#    7–8  → High
+#    9–10 → Extreme
+#
+#  Heart rate zone mapping:
+#    < 60  → Athlete
+#    60–70 → Excellent
+#    71–80 → Good
+#    81–90 → Above average
+#    91–100→ High normal
+#    > 100 → Elevated (consult a doctor)
