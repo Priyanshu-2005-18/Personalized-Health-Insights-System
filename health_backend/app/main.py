@@ -25,7 +25,7 @@ logger = logging.getLogger(__name__)
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     logger.info("Starting up %s v%s ...", settings.APP_NAME, settings.APP_VERSION)
-    await init_db()
+    #await init_db()
     load_models()
     # Load the health-score prediction pipeline
     HealthScorePredictor.get_instance().load()
