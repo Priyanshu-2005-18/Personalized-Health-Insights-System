@@ -209,7 +209,7 @@ export function RecommendationsPage() {
         sleep_hours:     (log as any).sleep_hours     ?? undefined,
         steps:           (log as any).steps           ?? undefined,
         calories:        (log as any).calories        ?? undefined,
-        water_intake_ml: (log as any).water_intake_ml ?? undefined,
+        water_intake_ml: (log as any).water_ml        ?? undefined,
         stress_level:    log.stress_level             ?? undefined,
         heart_rate_bpm:  (log as any).heart_rate_bpm  ?? undefined,
       })

@@ -7,7 +7,7 @@ from app.recommendation_engine.rules.thresholds import SLEEP, STRESS
 
 def rule_extreme_stress(m: HealthMetrics) -> Optional[Recommendation]:
     """Fires when stress = 10 — crisis-level stress."""
-    if m.stress_level is None or m.stress_level < STRESS.very_high_max:
+    if m.stress_level is None or m.stress_level < STRESS.extreme_min:
         return None
     return Recommendation(
         id="stress_extreme",
