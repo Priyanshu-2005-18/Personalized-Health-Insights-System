@@ -1,33 +1,29 @@
 from datetime import datetime, timedelta, timezone
 from typing import Any, Optional
-from jose import JWTError, jwt
-from passlib.context import CryptContext
-from app.core.config import settings
-import bcrypt
-print("bcrypt version:", getattr(bcrypt, "__version__", "no __version__"))
-print("bcrypt module:", bcrypt.__file__)
-
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-
 
 import uuid
 
-# ─── Password helpers ──────────────────────────────────────────────────────────
+from jose import JWTError, jwt
+from pwdlib import PasswordHash
 
-def hash_password(plain: str) -> str:
-    return pwd_context.hash(plain)
+from app.core.config import settings
 
-
-def verify_password(plain: str, hashed: str) -> bool:
-    return pwd_context.verify(plain, hashed)
+password_hash = PasswordHash.recommended()
 
 
-# ─── Token helpers ─────────────────────────────────────────────────────────────
+def hash_password(password: str) -> str:
+    return password_hash.hash(password)
+
+
+def verify_password(password: str, hashed: str) -> bool:
+    return password_hash.verify(password, hashed)
+
 
 def create_access_token(subject: str | Any, extra: dict = {}) -> str:
     expire = datetime.now(timezone.utc) + timedelta(
         minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES
     )
+
     payload = {
         "sub": str(subject),
         "exp": expire,
@@ -36,13 +32,19 @@ def create_access_token(subject: str | Any, extra: dict = {}) -> str:
         "type": "access",
         **extra,
     }
-    return jwt.encode(payload, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
+
+    return jwt.encode(
+        payload,
+        settings.SECRET_KEY,
+        algorithm=settings.ALGORITHM,
+    )
 
 
 def create_refresh_token(subject: str | Any) -> str:
     expire = datetime.now(timezone.utc) + timedelta(
         days=settings.REFRESH_TOKEN_EXPIRE_DAYS
     )
+
     payload = {
         "sub": str(subject),
         "exp": expire,
@@ -50,11 +52,20 @@ def create_refresh_token(subject: str | Any) -> str:
         "jti": str(uuid.uuid4()),
         "type": "refresh",
     }
-    return jwt.encode(payload, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
+
+    return jwt.encode(
+        payload,
+        settings.SECRET_KEY,
+        algorithm=settings.ALGORITHM,
+    )
 
 
 def decode_token(token: str) -> Optional[dict]:
     try:
-        return jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+        return jwt.decode(
+            token,
+            settings.SECRET_KEY,
+            algorithms=[settings.ALGORITHM],
+        )
     except JWTError:
         return None
