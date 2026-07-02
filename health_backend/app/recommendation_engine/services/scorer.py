@@ -104,34 +104,62 @@ def build_metric_statuses(
     def _status_label(score: Optional[float]) -> tuple[str, str]:
         if score is None:
             return "unknown", "No data"
-        if score >= 90: return "optimal",  "Optimal ✅"
-        if score >= 75: return "good",     "Good 🟡"
-        if score >= 55: return "fair",     "Fair 🟠"
-        if score >= 35: return "poor",     "Poor 🔴"
+        if score >= 90:
+            return "optimal", "Optimal ✅"
+        if score >= 75:
+            return "good", "Good 🟡"
+        if score >= 55:
+            return "fair", "Fair 🟠"
+        if score >= 35:
+            return "poor", "Poor 🔴"
         return "critical", "Critical 🆘"
 
     entries = [
-        ("Sleep",           m.sleep_hours,     "hours",    "7–9 hours",           "sleep"),
-        ("Steps",           m.steps,           "steps",    "10,000 steps/day",    "activity"),
-        ("Calories",        m.calories,        "kcal",     "1,600–2,400 kcal",    "nutrition"),
-        ("Water Intake",    m.water_intake_ml, "ml",       "2,000–3,000 ml",      "hydration"),
-        ("Stress Level",    m.stress_level,    "/10",      "1–3 (low)",           "stress"),
-        ("Heart Rate",      m.heart_rate_bpm,  "bpm",      "55–75 bpm",           "heart_rate"),
+        ("Sleep",           m.sleep_hours,     "hours", "7–9 hours",        "sleep"),
+        ("Steps",           m.steps,           "steps", "10,000 steps/day", "activity"),
+        ("Calories",        m.calories,        "kcal",  "1,600–2,400 kcal", "nutrition"),
+        ("Water Intake",    m.water_intake_ml, "ml",    "2,000–3,000 ml",   "hydration"),
+        ("Stress Level",    m.stress_level,    "/10",   "1–3 (low)",         "stress"),
+        ("Heart Rate",      m.heart_rate_bpm,  "bpm",   "55–75 bpm",         "heart_rate"),
     ]
 
     statuses = []
+
     for name, value, unit, target, cat in entries:
         score = sub_scores.get(cat)
-        status_key, status_label = _status_label(score)
-        statuses.append(MetricStatus(
-            name=name,
-            value=float(value) if value is not None else None,
-            unit=unit,
-            status=status_key,
-            status_label=status_label,
-            target=target,
-            score=score if score is not None else 0.0,
-        ))
+
+        # Use the same thresholds as the recommendation engine for stress
+        if cat == "stress" and m.stress_level is not None:
+            if m.stress_level >= STRESS.extreme_min:          # 10
+                status_key = "critical"
+                status_label = "Critical 🆘"
+            elif m.stress_level > STRESS.high_max:            # 8-9
+                status_key = "high"
+                status_label = "High 🔴"
+            elif m.stress_level > STRESS.moderate_max:        # 6-7
+                status_key = "fair"
+                status_label = "Moderate 🟠"
+            elif m.stress_level > STRESS.low_max:             # 4-5
+                status_key = "good"
+                status_label = "Mild 🟡"
+            else:                                             # 1-3
+                status_key = "optimal"
+                status_label = "Low ✅"
+        else:
+            status_key, status_label = _status_label(score)
+
+        statuses.append(
+            MetricStatus(
+                name=name,
+                value=float(value) if value is not None else None,
+                unit=unit,
+                status=status_key,
+                status_label=status_label,
+                target=target,
+                score=score if score is not None else 0.0,
+            )
+        )
+
     return statuses
 
 
