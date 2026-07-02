@@ -3,6 +3,9 @@ from typing import Any, Optional
 from jose import JWTError, jwt
 from passlib.context import CryptContext
 from app.core.config import settings
+import bcrypt
+print("bcrypt version:", getattr(bcrypt, "__version__", "no __version__"))
+print("bcrypt module:", bcrypt.__file__)
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
